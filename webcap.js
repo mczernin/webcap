@@ -1,91 +1,170 @@
+"use strict";
+
+/*
+	Usage:
+	$ phantomjs webcap.js <json>"
+		<json> JSON-formatted array of settings, which include:
+		Mandatory:
+			"url"					(str) URL to screenshot
+		Optional:
+			"viewportWidth"			(int) Width of the viewport of the virtual browser (default=1024)
+			"viewportHeight"		(int) Height of the viewport of the virtual browser (default=768)
+			"clipWidth"				(int) Width of resulting screenshot (default=viewportWidth)
+			"clipHeight"			(int) Height of resulting screenshot (default=viewportHeight)
+			"timeout"				(int) Maximum time in seconds that this whole command is allowed to take (default=30)
+			"cookies"				(arr) Cookies available to servers during the screenshot (default=[])
+										{
+											"name":"cookie_name",		// required property
+											"value":"cookie_value",		// required property
+											"domain":'example.lan',		// required property
+											"path":'/foo',
+											"httponly":bool,	// is cookie available outside http (javascript)
+											"secure":bool,		// send cookie only if using secure protocol
+										}
+			"userAgent"				(str)  User agent to identify self with (default=phantomjs default)
+			"javascript"			(bool) Is Javascript enabled? (default=true)
+			"maxBytes"				(int)  Maximum allowed total received bytes (default=1024*1024*5)
+			"maxRedirects"			(int)  Maximum allowed total redirections (default=40)
+									       (40=Semi-random maximum. Firefox had 20, apparently for one resource, but we count total..)
+			
+	Return value:
+		0	Screenshot successful. JSON-formatted data written to stdout.
+			Values available:
+				"title"				Title of the screenshotted web page
+				"image"				The actual screenshot in PNG format
+		Anything else is an error. Details written to stdout & stderr.
+*/
+
 /*
 $phantomjs scrncap.js | tail -c +10 | head -c -2 | base64 --decode - > capture.png
 */
 
-// in case of errors, print error and exit phantomjs
-phantom.onError = function(msg, trace) {
-	console.log(msg);
-	console.log(JSON.stringify(trace));
-	phantom.exit();
+/*
+ * -- separator
+ */
+
+var err = function(msg) {
+	console.error(msg);
+	phantom.exit(1);
 }
 
-// include phantomjs system library
-system = require('system')
+var out = function(msg) {
+	console.log(msg);
+}
+
+phantom.onError = function(msg, trace) {
+	// in case of errors, print error and exit phantomjs
+	err("Error: " + msg + "\n" + JSON.stringify(trace, null, " "));
+}
+
+args  = require('system').args;
 
 // ensure correct amount of arguments are available
-if (system.args.length != 2) {
-	console.log("Usage: "+ system.args[0] + " url");
-	phantom.exit();
+if (args.length != 2) err("Usage: See source code for detailed usage");
+
+// parse arguments
+var args = JSON.parse(args[2]);
+if (args === undefined) err("Error: Failed to parse JSON-formatted arguments");
+
+// ensure mandatory arguments are present
+if (args["url"] === undefined) {
+	err("Error: url must be specified");
 }
 
-// url to render to image
-url = system.args[1];
+// default values for optional arguments
+if (args["viewportWidth"] === undefined) args["viewportWidth"] = 1024;
+if (args["viewportHeight"] === undefined) args["viewportHeight"] = 768;
+if (args["clipWidth"] === undefined) args["clipWidth"] = args["viewportWidth"];
+if (args["clipHeight"] === undefined) args["clipHeight"] = args["viewportHeight"];
+if (args["timeout"] === undefined) args["timeout"] = 30;
+if (args["cookies"] === undefined) args["cookies"] = [];
+if (args["userAgent"] === undefined) args["userAgent"] = [];
+if (args["javascript"] === undefined) args["javascript"] = true;
+if (args["maxBytes"] === undefined) args["maxBytes"] = 1024*1024*5;
+if (args["maxRedirects"] === undefined) args["maxRedirects"] = 40;
 
-// include phantomjs webpage library
+
+/*
+ * -- separator
+ */
+
 page = require('webpage').create();
 
-// web worker settings
-page.settings.userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1309.0 Safari/537.17';
-//page.settings.javascriptEnabled = false;
-page.viewportSize = { width:935, height:938 }
-page.clipRect = { top:0, left:0, width:page.viewportSize.width, height:page.viewportSize.height };
+page.viewportSize = { width:args["viewportWidth"], height:args["viewportHeight"] };
+page.clipRect = { top:0, left:0, width:args["clipWidth"], height:args["clipHeight"] };
+page.settings.userAgent = args["userAgent"];
+page.settings.javascriptEnabled = args["javascript"];
 
-// take care of "redirect count" and "bytes received" limits
+args["cookies"].forEach(function(elem, idx, arr) {
+	if (page.addCookie(elem) === false) {
+		err("Error: Failed to add the following cookie:\n" + elem);
+	}
+})
+
+// print settings that are now in effect
+out("url: "+args["url"]);
+out("viewport rect: "+ page.viewportSize.width+ ", "+ page.viewportSize.height);
+out("clip rect: "+ page.clipRect.width+ ", "+ page.clipRect.height);
+out("timeout: "+args["timeout"]);
+out("cookies: "+page.cookies);
+out("user agent: "+page.settings.userAgent);
+out("javascript enabled: "+page.settings.javascriptEnabled);
+out("max bytes: "+args["maxBytes");
+out("max redirects: "+args["maxRedirects");
+
+
+/*
+ * -- separator
+ */
+
+page.open(args["url"]);
+
 redirects = 0;
 receivedBytes = 0;
-
 // this keeps track of last response in case failure happens (though reason of failure could be different..)
 lastResponse = '';
 
-// if limits are reached, inform and exit phantomjs
 page.onResourceReceived = function(response) {
 	// console.log(JSON.stringify(response)+"\n");
-	if (response.state == 'end') {
-		lastResponse = response;
-	}
-	
+	if (response.stage == 'end') lastResponse = response;
 	if (response.redirectURL) redirects++;
 	if (response.bodySize) receivedBytes += response.bodySize
 	
-	if (receivedBytes > 1024*1024*10) { // 10 MiB
-		console.log("TOOBIG");
-		phantom.exit();
+	if (receivedBytes > args["maxBytes"]) {
+		err("Error: exceeded specified total allowed received bytes")
 	}
 	
-	if (redirects > 20 * 2) { // semi-random maximum. firefox had 20 (apparently for one resource), but we count total..
-		console.log("TOOMANYREDIRECTS");
-		phantom.exit();
+	if (redirects > args["maxRedirects"]) {
+		err("Error: exceeded specified total allowed redirects")
 	}
 };
-
-// abort if full page not received after x seconds
-setTimeout(function() {
-	console.log("TIMEOUT");
-	phantom.exit();
-}, 1000 * 15); // 15s
 
 // when page loading finishes: if success: capture page. exit phantomjs
 page.onLoadFinished = function(status) {
 	switch(status) {
 		case 'success':
 			window.setTimeout(function () {
-				//imageData = page.renderBase64("PNG");
-				//console.log("RENDERED:["+imageData+"]");
-				page.render("captured.png");
-				console.log("RENDERED");
+				imageData = page.renderBase64("PNG");
+				//page.render("captured.png");
+				out(JSON.stringify({
+					"title":page.title,
+					"image":imageData // TODO:base64?/documentation?
+				}));
 				phantom.exit();
 			}, 200);
 			break;
 		
 		case 'fail':
+		// TODO: DOES THIS FAIL IN CASE OF SUB-REQUEST FAILING? if so, must devise means to an end with onResourceReceived..?
 		default:
-			console.log("FAIL,LASTRESPONSE:"+JSON.stringify(lastResponse));
-			phantom.exit();
+			err("Error: failed, last response: "+ JSON.stringify(lastResponse));
 	}
 }
 
-// begin request
-page.open(url);
+// abort if full page not received after x seconds
+setTimeout(function() {
+	err("Error: timeout exceeded");
+}, args["timeout"] * 1000);
 
 /* This is free and unencumbered software released into the public domain.
 
