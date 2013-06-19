@@ -149,10 +149,12 @@ page.onResourceReceived = function(response) {
 	if (response.bodySize) receivedBytes += response.bodySize
 	
 	if (receivedBytes > args["maxBytes"]) {
+		// observing crash after phantom.exit(1)
 		err("Error: exceeded specified total allowed received bytes")
 	}
 	
 	if (redirects > args["maxRedirects"]) {
+		// observing crash after phantom.exit(1)
 		err("Error: exceeded specified total allowed redirects")
 	}
 	
@@ -190,7 +192,7 @@ page.onLoadFinished = function(status) {
 					"bytesReceived":receivedBytes,
 					"title":page.title,
 					"headers":mainHeaders,
-					"body":page.content, // alt(diff?): page.evaluate(function() { return document.documentElement.outerHTML })
+					"body":page.content, // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML })
 					"image":imageData, // TODO:base64 necessary? js cannot handle binary data? / documentation?
 				}, null, " "));
 				phantom.exit();
