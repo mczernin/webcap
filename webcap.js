@@ -1,50 +1,61 @@
-"use strict";
-
 /*
 	Usage:
-	$ phantomjs webcap.js <json>"
-		<json> JSON-formatted array of settings, which include:
-		Mandatory:
-			"url"					(str) URL to screenshot
-		Optional:
-			"viewportWidth"			(int) Width of the viewport of the virtual browser (default=1024)
-			"viewportHeight"		(int) Height of the viewport of the virtual browser (default=768)
-			"clipWidth"				(int) Width of resulting screenshot (default=viewportWidth)
-			"clipHeight"			(int) Height of resulting screenshot (default=viewportHeight)
-			"timeout"				(int) Maximum time in seconds that this whole command is allowed to take (default=30)
-			"cookies"				(arr) Cookies available to servers during the screenshot (default=[])
-										{
-											"name":"cookie_name",		// required property
-											"value":"cookie_value",		// required property
-											"domain":'example.lan',		// required property
-											"path":'/foo',
-											"httponly":bool,	// is cookie available outside http (javascript)
-											"secure":bool,		// send cookie only if using secure protocol
-										}
-			"userAgent"				(str)  User agent to identify self with (default=phantomjs default)
-			"javascript"			(bool) Is Javascript enabled? (default=true)
-			"maxBytes"				(int)  Maximum allowed total received bytes (default=1024*1024*5)
-			"maxRedirects"			(int)  Maximum allowed total redirections (default=40)
-									       (40=Semi-random maximum. Firefox had 20, apparently for one resource, but we count total..)
-			
+	$ phantomjs webcap.js <json>
+		<json> JSON-formatted array of settings, which are:
+		
+	Mandatory:						Default:				Description:
+		"url"												(str) URL to screenshot
+		
+	Optional:
+		"viewportWidth" (int)		1024					Width of the viewport of the virtual browser
+		"viewportHeight" (int)		768						Height of the viewport of the virtual browser
+		"clipWidth" (int)			viewportWidth			Width of resulting screenshot
+		"clipHeight" (int)			viewportHeight			Height of resulting screenshot
+		"zoom" (dec)				1.0						Viewport zoom factor (range=0-1)
+		"timeout" (int)				30						Maximum time in seconds that the screenshot is allowed to take
+		"cookies" (arr)				[]						Cookies available to servers during the screenshot
+															{
+																"name":"cookie_name",		// required property
+																"value":"cookie_value",		// required property
+																"domain":'example.lan',		// required property
+																"path":'/foo',
+																"httponly":bool,	// is cookie available outside http (javascript)
+																"secure":bool,		// send cookie only if using secure protocol
+															}
+		"userAgent" (str)			PhantomJS's default		User agent to identify self with
+		"javascript" (bool)			true					Is Javascript enabled?
+		"maxBytes" (int)			1024*1024*5				Maximum allowed total received bytes
+		"maxRedirects" (int)		40						Maximum allowed total redirections
+		
 	Return value:
-		0	Screenshot successful. JSON-formatted data written to stdout.
-			Values available:
-				"title"				Title of the screenshotted web page
-				"image"				The actual screenshot in PNG format
-		Anything else is an error. Details written to stdout & stderr.
+		0		Screenshot successful. JSON-formatted data written to stdout.
+				{
+					"arguments"			Arguments applied to the request (for information/"debugging" only)
+					"bytesReceived"		Total bytes received (all sub-requests combined)
+					"title"				Title of the screenshotted web page
+					"headers"			Headers received from the server ({key:value}*n)
+					"body"				Received data after browser engine has interpreted it
+										(Javascript might have done modifications to it as well)
+					"image"				The actual screenshot in PNG format, encoded in Base64
+				}
+		?		Any other exit code means an error occurred. Details written to stdout & stderr.
+		
+	Advanced example:
+	$ phantomjs webcap.js '{"url":"http://fox.com","viewportWidth":128,"viewportHeight":128,"zoom":0.1,"userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0"}'|grep -oP '(?<= "image": ").*(?=")'|base64 -d |display png:-
 */
 
 /*
-$phantomjs scrncap.js | tail -c +10 | head -c -2 | base64 --decode - > capture.png
+
 */
 
 /*
  * -- separator
  */
 
+"use strict";
+
 var err = function(msg) {
-	console.error(msg);
+	console.log(msg);
 	phantom.exit(1);
 }
 
@@ -57,13 +68,18 @@ phantom.onError = function(msg, trace) {
 	err("Error: " + msg + "\n" + JSON.stringify(trace, null, " "));
 }
 
-args  = require('system').args;
+
+/*
+ * -- separator
+ */
+
+var args = require('system').args;
 
 // ensure correct amount of arguments are available
 if (args.length != 2) err("Usage: See source code for detailed usage");
 
 // parse arguments
-var args = JSON.parse(args[2]);
+var args = JSON.parse(args[1]);
 if (args === undefined) err("Error: Failed to parse JSON-formatted arguments");
 
 // ensure mandatory arguments are present
@@ -76,22 +92,23 @@ if (args["viewportWidth"] === undefined) args["viewportWidth"] = 1024;
 if (args["viewportHeight"] === undefined) args["viewportHeight"] = 768;
 if (args["clipWidth"] === undefined) args["clipWidth"] = args["viewportWidth"];
 if (args["clipHeight"] === undefined) args["clipHeight"] = args["viewportHeight"];
+if (args["zoom"] === undefined) args["zoom"] = 1;
 if (args["timeout"] === undefined) args["timeout"] = 30;
 if (args["cookies"] === undefined) args["cookies"] = [];
 if (args["userAgent"] === undefined) args["userAgent"] = [];
 if (args["javascript"] === undefined) args["javascript"] = true;
-if (args["maxBytes"] === undefined) args["maxBytes"] = 1024*1024*5;
-if (args["maxRedirects"] === undefined) args["maxRedirects"] = 40;
+if (args["maxBytes"] === undefined) args["maxBytes"] = 1024*1024*5; // 5 MiB
+if (args["maxRedirects"] === undefined) args["maxRedirects"] = 40; // Semi-random maximum. Firefox had 20 (apparently for one resource), but we count total..
 
 
 /*
  * -- separator
  */
-
-page = require('webpage').create();
+var page = require('webpage').create();
 
 page.viewportSize = { width:args["viewportWidth"], height:args["viewportHeight"] };
 page.clipRect = { top:0, left:0, width:args["clipWidth"], height:args["clipHeight"] };
+page.zoomFactor = args["zoom"];
 page.settings.userAgent = args["userAgent"];
 page.settings.javascriptEnabled = args["javascript"];
 
@@ -99,18 +116,19 @@ args["cookies"].forEach(function(elem, idx, arr) {
 	if (page.addCookie(elem) === false) {
 		err("Error: Failed to add the following cookie:\n" + elem);
 	}
-})
+});
 
-// print settings that are now in effect
-out("url: "+args["url"]);
-out("viewport rect: "+ page.viewportSize.width+ ", "+ page.viewportSize.height);
-out("clip rect: "+ page.clipRect.width+ ", "+ page.clipRect.height);
-out("timeout: "+args["timeout"]);
-out("cookies: "+page.cookies);
-out("user agent: "+page.settings.userAgent);
-out("javascript enabled: "+page.settings.javascriptEnabled);
-out("max bytes: "+args["maxBytes");
-out("max redirects: "+args["maxRedirects");
+var sentCookies = phantom.cookies;
+
+/*phantom.cookies.forEach(function(elem, idx, arr) {
+	console.log(JSON.stringify(elem));*/
+	/*var nc = {};
+	for (var k in c) {
+		console.log(c);
+		nc[k] = c[k];
+	}
+	sentCookies.push(nc);*/
+/*});*/
 
 
 /*
@@ -119,13 +137,13 @@ out("max redirects: "+args["maxRedirects");
 
 page.open(args["url"]);
 
-redirects = 0;
-receivedBytes = 0;
-// this keeps track of last response in case failure happens (though reason of failure could be different..)
-lastResponse = '';
+var redirects = 0;
+var receivedBytes = 0;
+// the following variable keeps track of last response in case failure happens (though reason of failure could be different, because view of this variable happens elsewhere than where it's set)
+var lastResponse = '';
+var mainHeaders = {};
 
 page.onResourceReceived = function(response) {
-	// console.log(JSON.stringify(response)+"\n");
 	if (response.stage == 'end') lastResponse = response;
 	if (response.redirectURL) redirects++;
 	if (response.bodySize) receivedBytes += response.bodySize
@@ -137,6 +155,16 @@ page.onResourceReceived = function(response) {
 	if (redirects > args["maxRedirects"]) {
 		err("Error: exceeded specified total allowed redirects")
 	}
+	
+	if (response.stage == 'end' && page.url == response.url) { // relying on observed behavior
+		/*
+		 * couldn't find documentation for response.headers content.
+		 * assuming [{'name':'blabla','value':'blabla'}*n], as observed during example run
+		 */
+		response.headers.forEach(function(elem, idx, arr) {
+			mainHeaders[elem.name] = elem.value;
+		});
+	}
 };
 
 // when page loading finishes: if success: capture page. exit phantomjs
@@ -144,18 +172,33 @@ page.onLoadFinished = function(status) {
 	switch(status) {
 		case 'success':
 			window.setTimeout(function () {
-				imageData = page.renderBase64("PNG");
+				var imageData = page.renderBase64("PNG");
 				//page.render("captured.png");
 				out(JSON.stringify({
+					"arguments":{
+						"url":args["url"],
+						"viewport rect":page.viewportSize.width+ ", "+ page.viewportSize.height,
+						"clip rect":page.clipRect.width+ ", "+ page.clipRect.height,
+						"zoom factor":args["zoom"],
+						"timeout":args["timeout"],
+						"cookies":sentCookies,
+						"user agent":page.settings.userAgent,
+						"javascript enabled":page.settings.javascriptEnabled,
+						"max bytes":args["maxBytes"],
+						"max redirects":args["maxRedirects"]
+					},
+					"bytesReceived":receivedBytes,
 					"title":page.title,
-					"image":imageData // TODO:base64?/documentation?
-				}));
+					"headers":mainHeaders,
+					"body":page.content, // alt(diff?): page.evaluate(function() { return document.documentElement.outerHTML })
+					"image":imageData, // TODO:base64 necessary? js cannot handle binary data? / documentation?
+				}, null, " "));
 				phantom.exit();
 			}, 200);
 			break;
 		
 		case 'fail':
-		// TODO: DOES THIS FAIL IN CASE OF SUB-REQUEST FAILING? if so, must devise means to an end with onResourceReceived..?
+		// TODO: DOES THIS FAIL IN CASE OF SUB-REQUEST FAILING? if so, must go around with onResourceReceived..?
 		default:
 			err("Error: failed, last response: "+ JSON.stringify(lastResponse));
 	}
@@ -165,6 +208,7 @@ page.onLoadFinished = function(status) {
 setTimeout(function() {
 	err("Error: timeout exceeded");
 }, args["timeout"] * 1000);
+
 
 /* This is free and unencumbered software released into the public domain.
 
