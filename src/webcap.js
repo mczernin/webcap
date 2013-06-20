@@ -12,7 +12,7 @@
         "clipWidth" (int)           viewportWidth           Width of resulting screenshot
         "clipHeight" (int)          viewportHeight          Height of resulting screenshot
         "zoom" (dec)                1.0                     Viewport zoom factor (range=0-1)
-        "timeout" (int)             30                      Maximum time in seconds that the screenshot is allowed to take
+        "timeout" (int)             30                      Maximum time in seconds this script is allowed to execute
         "cookies" (arr)             []                      Cookies available to servers during the screenshot
                                                             {
                                                                 "name":"cookie_name",           // required property
@@ -44,9 +44,6 @@
     $ phantomjs webcap.js '{"url":"http://fox.com","viewportWidth":128,"viewportHeight":128,"zoom":0.1,"userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0"}'|grep -oP '(?<= "image": ").*(?=")'|base64 -d |display png:-
 */
 
-/*
-
-*/
 
 /*
  * -- separator
@@ -104,6 +101,12 @@ if (args["maxRedirects"] === undefined) args["maxRedirects"] = 40; // Semi-rando
 /*
  * -- separator
  */
+
+// abort if script execution exceeds x seconds
+setTimeout(function() {
+    err("Error: timeout exceeded");
+}, args["timeout"] * 1000);
+
 var page = require('webpage').create();
 
 page.viewportSize = { width:args["viewportWidth"], height:args["viewportHeight"] };
@@ -145,8 +148,15 @@ var mainHeaders = {};
 
 page.onResourceReceived = function(response) {
     if (response.stage == 'end') lastResponse = response;
-    if (response.redirectURL) redirects++;
-    if (response.bodySize) receivedBytes += response.bodySize
+    
+    // dont count body size and redirects more than once (start & end)
+    if (response.stage == 'start') {
+        /*
+         * count body size only before receiving data, aka "let's wait to receive 5mb and check if maxBytes exceeded, rather than if we knew content-length beforehand"?
+         */
+        if (response.bodySize) receivedBytes += response.bodySize
+        if (response.redirectURL) redirects++;
+    }
     
     if (receivedBytes > args["maxBytes"]) {
         // observing crash after phantom.exit(1)
@@ -205,11 +215,6 @@ page.onLoadFinished = function(status) {
             err("Error: failed, last response: "+ JSON.stringify(lastResponse));
     }
 }
-
-// abort if full page not received after x seconds
-setTimeout(function() {
-    err("Error: timeout exceeded");
-}, args["timeout"] * 1000);
 
 
 /* This is free and unencumbered software released into the public domain.
