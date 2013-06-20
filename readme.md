@@ -26,7 +26,7 @@ This repository contains two constructs and one role:
 > Up-To-Date [Documentation Here](https://bitbucket.org/gima/webcap/src/master/src/webcap-service.js).
 
 >     $ nodejs webcap-service.js
-> Reads settings from environment. `PORT` and `KEY` among others.
+> Reads settings from environment: port to listen and key for the API among others.
 
 ## Heroku
 
