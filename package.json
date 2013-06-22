@@ -1,21 +1,33 @@
 {
     "name": "webcap-service",
-    "version": "0.0.1",
     "description": "Webpage screenshot with PhantomJS, optionally runnable as a REST service. Ready to run on free Heroku.",
-    "repository": {
-        "type": "git",
-        "url": "https://bitbucket.org/gima/webcap.git"
-    },
+    "version": "0.0.1",
+    
+    "author": "gima",
+    "license": "Public Domain",
+    
     "keywords": [
         "webpage",
         "screenshot",
         "phantomjs",
         "rest",
-        "heroku",
+        "heroku"
     ],
-    "author": "gima",
-    "license": "Public Domain",
+    
+    "repository": {
+        "type": "git",
+        "url": "https://bitbucket.org/gima/webcap.git"
+    },
+    
+    "engines": {
+        "node": "0.10.5"
+    },
+    
     "dependencies": {
-       "express": "~3.2.6"
+        "restify": "2.6.0"
+    },
+    "devDependencies": {
+        "grunt": "0.4.1",
+        "grunt-nodemon": "0.0.4"
     }
 }

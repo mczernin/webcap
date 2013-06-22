@@ -1,54 +1,3 @@
-/*
-    Usage:
-    $ phantomjs webcap.js <json>
-        <json> JSON-formatted array of settings, which are:
-        
-    Mandatory:                      Default:                Description:
-        "url"                                               (str) URL to screenshot
-        
-    Optional:
-        "viewportWidth" (int)       1024                    Width of the viewport of the virtual browser
-        "viewportHeight" (int)      768                     Height of the viewport of the virtual browser
-        "clipWidth" (int)           viewportWidth           Width of resulting screenshot
-        "clipHeight" (int)          viewportHeight          Height of resulting screenshot
-        "zoom" (dec)                1.0                     Viewport zoom factor (range=0-1)
-        "timeout" (int)             30                      Maximum time in seconds this script is allowed to execute
-        "cookies" (arr)             []                      Cookies available to servers during the screenshot
-                                                            {
-                                                                "name":"cookie_name",           // required property
-                                                                "value":"cookie_value",         // required property
-                                                                "domain":'example.lan',         // required property
-                                                                "path":'/foo',
-                                                                "httponly":bool,      // is cookie available outside http (javascript)
-                                                                "secure":bool,        // send cookie only if using secure protocol
-                                                            }
-        "userAgent" (str)           PhantomJS's default     User agent to identify self with
-        "javascript" (bool)         true                    Is Javascript enabled?
-        "maxBytes" (int)            1024*1024*5             Maximum allowed total received bytes
-        "maxRedirects" (int)        40                      Maximum allowed total redirections
-        
-    Return value:
-        0       Screenshot successful. JSON-formatted data written to stdout.
-                {
-                    "arguments"             Arguments applied to the request (for information/"debugging" only)
-                    "bytesReceived"         Total bytes received (all sub-requests combined)
-                    "title"                 Title of the screenshotted web page
-                    "headers"               Headers received from the server ({key:value}*n)
-                    "body"                  Received data after browser engine has interpreted it
-                                            (Javascript might have done modifications to it as well)
-                    "image"                 The actual screenshot in PNG format, encoded in Base64
-                }
-        ?       Any other exit code means an error occurred. Details written to stdout & stderr.
-        
-    Advanced example:
-    $ phantomjs webcap.js '{"url":"http://fox.com","viewportWidth":128,"viewportHeight":128,"zoom":0.1,"userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0"}'|grep -oP '(?<= "image": ").*(?=")'|base64 -d |display png:-
-*/
-
-
-/*
- * -- separator
- */
-
 "use strict";
 
 var err = function(msg) {
@@ -76,8 +25,11 @@ var args = require('system').args;
 if (args.length != 2) err("Usage: See source code for detailed usage");
 
 // parse arguments
-var args = JSON.parse(args[1]);
-if (args === undefined) err("Error: Failed to parse JSON-formatted arguments");
+try {
+    var args = JSON.parse(args[1]);
+} catch (e) {
+    err("Error: Failed to parse JSON-formatted arguments");
+}
 
 // ensure mandatory arguments are present
 if (args["url"] === undefined) {

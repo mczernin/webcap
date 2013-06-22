@@ -1,16 +1,44 @@
-var express = require("express");
-var app = express();
-app.use(express.logger());
-
-app.get('/webcap', function(request, response) {
-    response.send('Hello World!');
-});
-app.use()
+var restify = require('restify');
+var server = restify.createServer();
 
 var port = process.env.PORT || 5000;
-app.listen(port, function() {
-    console.log("Listening on " + port);
+
+server.listen(port);
+//server.pre(restify.pre.userAgentConnection());
+/*server.pre(function(req, res, next) {
+    req.headers['connection'] = 'close';
+});*/
+
+var getDateString = function()  {
+    var date = new Date();
+    return date.getUTCFullYear()+ "-"+ (date.getUTCMonth()+1)+ "-"+ date.getUTCDate()+ " "+ date.getUTCHours()+ ":"+ date.getUTCMinutes()+ ":"+ date.getUTCSeconds();
+}
+
+server.post('/webcap', function create(req, res, next) {
+    req.socket.setTimeout(3000, function() {
+        req.socket.end();
+        //res.json({status:'timeout'})
+    });
+    
+    req.setEncoding('utf8');
+    req.on('readable', function() {
+        var data = req.read();
+        try {
+            data = JSON.parse(data);
+        } catch (e) {
+            console.log(getDateString(), req.connection.remoteAddress, 'json parsing failed');
+            res.json({status:'json parsing failed'});
+            return;
+        }
+        
+        console.log(getDateString(), req.connection.remoteAddress, data.asdd);
+        res.json();
+    });
+    
 });
+
+console.log("Listening on " + port);
+
 
 
 /* This is free and unencumbered software released into the public domain.
