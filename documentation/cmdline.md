@@ -45,7 +45,7 @@
 >         "image",                 The actual screenshot in PNG format, encoded in Base64
 >     }
 
-`?` – Any other exit code means an error occurred. Details written to stdout & stderr.
+`?` – Any other code means an error occurred. Details written to stdout & stderr.
         
 ### Examples:
 Debug (spits everything at your face):  
