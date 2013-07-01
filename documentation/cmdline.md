@@ -21,8 +21,8 @@
 >     cookie = {
 >         "name":"cookie_name",           // required property
 >         "value":"cookie_value",         // required property
->         "domain":'example.lan',         // required property
->         "path":'/foo',
+>         "domain":"example.com",         // required property
+>         "path":"/foo",
 >         "httponly":bool,      // is cookie available outside http (to javascript)
 >         "secure":bool         // send cookie only if using secure protocol
 >     }
