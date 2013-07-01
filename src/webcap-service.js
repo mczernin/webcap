@@ -1,44 +1,114 @@
 var restify = require('restify');
+
+// init
+
+var spawn = require('child_process').spawn;
 var server = restify.createServer();
 
 var port = process.env.PORT || 5000;
+var key = process.env.KEY;
+
 
 server.listen(port);
-//server.pre(restify.pre.userAgentConnection());
-/*server.pre(function(req, res, next) {
-    req.headers['connection'] = 'close';
-});*/
+console.log("Listening on " + port);
+
+
+// functions
 
 var getDateString = function()  {
     var date = new Date();
     return date.getUTCFullYear()+ "-"+ (date.getUTCMonth()+1)+ "-"+ date.getUTCDate()+ " "+ date.getUTCHours()+ ":"+ date.getUTCMinutes()+ ":"+ date.getUTCSeconds();
 }
 
-server.post('/webcap', function create(req, res, next) {
-    req.socket.setTimeout(3000, function() {
-        req.socket.end();
-        //res.json({status:'timeout'})
+var err = function(res, msg) {
+    res.setHeader('content-type', 'text/plain');
+    res.send(400, msg);
+}
+
+// handlers
+
+// server.pre(function(req, res, next) {
+//     req.headers.connection = 'close';
+//     res.setHeader('connection', 'close');
+//     return next();
+// });
+
+var onRequest = function(req, res) {
+    var data = req.read();
+    
+    try {
+        data = JSON.parse(data);
+    } catch (e) {
+        console.log(getDateString(), req.connection.remoteAddress, 'json parsing failed');
+        err(res, 'json parsing failed');
+        return;
+    }
+    
+    if (data.key !== key) {
+        err(res, 'wrong key');
+        return;
+    }
+    // no need for the key to be submitted to the webcap cmdline program
+    delete data.key;
+    
+    var requestNum = ++onRequest.requests;
+    
+    console.log(getDateString(), requestNum, req.connection.remoteAddress, data.url);
+    
+    setTimeout(function() {
+        p.removeAllListeners();
+        err(res, 'hard timeout');
+        console.log(getDateString(), requestNum, "d"+tookSecs, 'FAIL/HARD TIMEOUT');
+        
+        p.kill('SIGKILL');
+    }, data.timeout == undefined ? 30000 : data.timeout);
+    
+    var p = spawn('phantomjs', ['webcap.js', JSON.stringify(data)]);
+    var spawnTime = new Date().getTime();
+    
+    var outbuf = '';
+    var errbuf = '';
+    
+    p.stdout.on('data', function(data) {
+        outbuf += data;
     });
     
+    p.stderr.on('data', function(data) {
+        errbuf += data;
+    });
+    
+    var lastError = null;
+    p.on('error', function(e) {
+        //err(res, 'webcap failed. err:'+ e+ ', stdout:'+ outbuf+ ', stderr:'+ errbuf);
+        lastError = e;
+    });
+    
+    p.on('close', function(code, signal) {
+    
+        var nowTime = new Date().getTime();
+        var tookSecs = Math.round((nowTime - spawnTime) / 1024);
+        
+        if (code == 0) {
+            console.log(getDateString(), requestNum, tookSecs+"s", 'OK');
+            res.send(JSON.parse(outbuf));
+        } else {
+            var bufMsgs = ('stdout:'+ outbuf+ ', stderr:'+ errbuf).replace(/[\r\n\t]+/g, ' ');
+            
+            console.log(getDateString(), requestNum, tookSecs+"s", 'FAIL:'+ lastError+ ', '+ bufMsgs);
+            err(res, 'webcap failed. err:'+ lastError+ '. '+ bufMsgs);
+        }
+    });
+    
+}
+
+onRequest.requests = 0;
+
+server.post('/webcap', function create(req, res, next) {
     req.setEncoding('utf8');
     req.on('readable', function() {
-        var data = req.read();
-        try {
-            data = JSON.parse(data);
-        } catch (e) {
-            console.log(getDateString(), req.connection.remoteAddress, 'json parsing failed');
-            res.json({status:'json parsing failed'});
-            return;
-        }
-        
-        console.log(getDateString(), req.connection.remoteAddress, data.asdd);
-        res.json();
+        onRequest(req, res);
     });
-    
 });
-
-console.log("Listening on " + port);
-
 
 
 /* This is free and unencumbered software released into the public domain.

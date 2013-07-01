@@ -5,9 +5,8 @@ module.exports = function(grunt) {
         nodemon: {
             dev: {
                 options: {
-                    watchedFolders: ['src'],
-                    debug: true,
-                    file: 'src/webcap-service.js',
+                    cwd: 'src',
+                    file: 'webcap-service.js',
                     delayTime: 1
                 }
             }

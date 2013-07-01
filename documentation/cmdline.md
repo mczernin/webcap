@@ -2,13 +2,13 @@
 
     $ phantomjs webcap.js <json>
     
-`<json>` JSON-encoded parameters (key:value).
+`json` JSON-encoded parameters (key:value).
 
-### Mandatory:
+### Mandatory parameters:
 
 `"url"` (str) — URL to screenshot.
 
-### Optional:
+### Optional parameters:
 
 `"viewportWidth"` (int, default:1024) — Width of the viewport of the virtual browser.  
 `"viewportHeight"` (int, default:768) — Height of the viewport of the virtual browser.  
@@ -23,8 +23,8 @@
 >         "value":"cookie_value",         // required property
 >         "domain":'example.lan',         // required property
 >         "path":'/foo',
->         "httponly":bool,      // is cookie available outside http (javascript)
->         "secure":bool,        // send cookie only if using secure protocol
+>         "httponly":bool,      // is cookie available outside http (to javascript)
+>         "secure":bool         // send cookie only if using secure protocol
 >     }
 
 `"userAgent"` (str, default:PhantomJS's default) — User agent to identify self with.  
@@ -37,22 +37,22 @@
 
 >     json = {
 >         "arguments",             Arguments applied to the request (for information/"debugging" only)
->         "bytesReceived",         Total bytes received (all sub-requests combined)
+>         "bytesReceived",         Total bytes received (all requests & subrequest combined)
 >         "title",                 Title of the screenshotted web page
 >         "headers",               Headers received from the server ({key:value}*n)
->         "body",                  Received data after browser engine has interpreted it
+>         "body",                  Body data of the screenshotted web page after browser engine has interpreted it
 >                                  (Javascript might have done modifications to it as well)
 >         "image",                 The actual screenshot in PNG format, encoded in Base64
 >     }
 
-`?` – Any other code means an error occurred. Details written to stdout & stderr.
+`?` – Any other exit code means an error occurred. Details written to stdout & stderr.
         
 ### Examples:
 Debug (spits everything at your face):  
-`$ phantom webcap.js '{"url":"http://fox.com"}'`
+`$ phantomjs webcap.js '{"url":"http://fox.com"}'`
 
 Display screenshot using [ImageMagick][imagemagick]:  
-`$ phantom webcap.js '{"url":"http://fox.com"}' | grep -oP '(?<= "image": ").*(?=")' | base64 -d | display png:-`
+`$ phantomjs webcap.js '{"url":"http://fox.com"}' | grep -oP '(?<= "image": ").*(?=")' | base64 -d | display png:-`
 
 Using many parameters, screenshotted website displayed with ImageMagick:
 

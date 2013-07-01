@@ -28,6 +28,6 @@
     },
     "devDependencies": {
         "grunt": "0.4.1",
-        "grunt-nodemon": "0.0.4"
+        "grunt-nodemon": "0.0.5"
     }
 }

@@ -1,7 +1,10 @@
 "use strict";
 
+var page = require('webpage').create();
+
 var err = function(msg) {
     console.log(msg);
+    page.abort();   // see if helps to avoid phantomjs crash
     phantom.exit(1);
 }
 
@@ -22,7 +25,7 @@ phantom.onError = function(msg, trace) {
 var args = require('system').args;
 
 // ensure correct amount of arguments are available
-if (args.length != 2) err("Usage: See source code for detailed usage");
+if (args.length != 2) err("Usage: See documentation");
 
 // parse arguments
 try {
@@ -32,7 +35,7 @@ try {
 }
 
 // ensure mandatory arguments are present
-if (args["url"] === undefined) {
+if (args["url"] == null) {
     err("Error: url must be specified");
 }
 
@@ -44,7 +47,7 @@ if (args["clipHeight"] === undefined) args["clipHeight"] = args["viewportHeight"
 if (args["zoom"] === undefined) args["zoom"] = 1;
 if (args["timeout"] === undefined) args["timeout"] = 30;
 if (args["cookies"] === undefined) args["cookies"] = [];
-if (args["userAgent"] === undefined) args["userAgent"] = [];
+if (args["userAgent"] === undefined) args["userAgent"] = null;
 if (args["javascript"] === undefined) args["javascript"] = true;
 if (args["maxBytes"] === undefined) args["maxBytes"] = 1024*1024*5; // 5 MiB
 if (args["maxRedirects"] === undefined) args["maxRedirects"] = 40; // Semi-random maximum. Firefox had 20 (apparently for one resource), but we count total..
@@ -59,12 +62,10 @@ setTimeout(function() {
     err("Error: timeout exceeded");
 }, args["timeout"] * 1000);
 
-var page = require('webpage').create();
-
 page.viewportSize = { width:args["viewportWidth"], height:args["viewportHeight"] };
 page.clipRect = { top:0, left:0, width:args["clipWidth"], height:args["clipHeight"] };
 page.zoomFactor = args["zoom"];
-page.settings.userAgent = args["userAgent"];
+if (args["userAgent"] != null) page.settings.userAgent = args["userAgent"];
 page.settings.javascriptEnabled = args["javascript"];
 
 args["cookies"].forEach(function(elem, idx, arr) {
@@ -74,16 +75,6 @@ args["cookies"].forEach(function(elem, idx, arr) {
 });
 
 var sentCookies = phantom.cookies;
-
-/*phantom.cookies.forEach(function(elem, idx, arr) {
-    console.log(JSON.stringify(elem));*/
-    /*var nc = {};
-    for (var k in c) {
-        console.log(c);
-        nc[k] = c[k];
-    }
-    sentCookies.push(nc);*/
-/*});*/
 
 
 /*
@@ -96,15 +87,17 @@ var redirects = 0;
 var receivedBytes = 0;
 // the following variable keeps track of last response in case failure happens (though reason of failure could be different, because view of this variable happens elsewhere than where it's set)
 var lastResponse = '';
+// headers received from first http response
 var mainHeaders = {};
 
 page.onResourceReceived = function(response) {
+    // last response is printed in case fetch fails 
     if (response.stage == 'end') lastResponse = response;
     
     // dont count body size and redirects more than once (start & end)
     if (response.stage == 'start') {
         /*
-         * count body size only before receiving data, aka "let's wait to receive 5mb and check if maxBytes exceeded, rather than if we knew content-length beforehand"?
+         * count body size only before receiving data, aka let's not "wait to receive 5mb and check if maxBytes exceeded", rather, read content-length beforehand
          */
         if (response.bodySize) receivedBytes += response.bodySize
         if (response.redirectURL) redirects++;
@@ -131,13 +124,14 @@ page.onResourceReceived = function(response) {
     }
 };
 
-// when page loading finishes: if success: capture page. exit phantomjs
+// when page loading finishes:
 page.onLoadFinished = function(status) {
     switch(status) {
         case 'success':
+            // if success: print print output according to documentation contract. exit with code:0
             window.setTimeout(function () {
                 var imageData = page.renderBase64("PNG");
-                //page.render("captured.png");
+                
                 out(JSON.stringify({
                     "arguments":{
                         "url":args["url"],
@@ -154,17 +148,18 @@ page.onLoadFinished = function(status) {
                     "bytesReceived":receivedBytes,
                     "title":page.title,
                     "headers":mainHeaders,
-                    "body":page.content, // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML })
-                    "image":imageData, // TODO:base64 necessary? js cannot handle binary data? / documentation?
+                    "body":page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML })
+                                            // needs base64 encoding?
+                    "image":imageData,  // TODO:base64 necessary? js cannot handle binary data? / remember to update doc?
                 }, null, " "));
+                
                 phantom.exit();
             }, 200);
             break;
         
-        case 'fail':
-        // TODO: DOES THIS FAIL IN CASE OF SUB-REQUEST FAILING? if so, must go around with onResourceReceived..?
+        case 'fail': // TODO: DOES THIS FAIL IN CASE OF SUB-REQUEST FAILING? if so, must go around with onResourceReceived..?
         default:
-            err("Error: failed, last response: "+ JSON.stringify(lastResponse));
+            err("Error: http request failed. last response: "+ JSON.stringify(lastResponse));
     }
 }
 

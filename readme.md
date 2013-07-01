@@ -1,6 +1,6 @@
 ## WebCap - Web page screenshotting tool
 
-This repository contains two constructs and one role:
+This repository contains two pieces of software and one "role":
 
 * `webcap.js`: Screenshot a web page from the command line (runs on [PhantomJS](http://phantomjs.org/)).
 * `webcap-service.js`: REST API for the command line tool (runs on [NodeJS](http://nodejs.org/)).
