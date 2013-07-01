@@ -45,7 +45,7 @@ if (args["viewportHeight"] === undefined) args["viewportHeight"] = 768;
 if (args["clipWidth"] === undefined) args["clipWidth"] = args["viewportWidth"];
 if (args["clipHeight"] === undefined) args["clipHeight"] = args["viewportHeight"];
 if (args["zoom"] === undefined) args["zoom"] = 1;
-if (args["timeout"] === undefined) args["timeout"] = 30;
+if (args["timeout"] === undefined) args["timeout"] = 27;
 if (args["cookies"] === undefined) args["cookies"] = [];
 if (args["userAgent"] === undefined) args["userAgent"] = null;
 if (args["javascript"] === undefined) args["javascript"] = true;

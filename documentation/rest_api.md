@@ -23,9 +23,9 @@
 
 ### Please note:
 
-The response may take up to `"timeout"` seconds. Remember to set your HTTP client's timeout accordingly.
+The response may take up to `"timeout"` seconds. Remember to set your HTTP client's timeout accordingly. If timeout is not specified, it is set to 28 seconds.
 
-If hosting the REST API on Heroku, the hosting architecture expects the reply to be sent within 30 seconds. Thus it is advisable to cap the `"timeout"` to a value under 30 seconds, so as to receive a proper response from Webcap, and not an error from Heroku.
+If hosting the REST API on Heroku, the hosting architecture expects a reply to be sent within 30 seconds. Thus it is advisable to cap the timeout to a value under 30 seconds, so as to receive a proper response from Webcap, and not an error from Heroku. 
 
 ### Examples:
 

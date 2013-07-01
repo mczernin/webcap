@@ -55,14 +55,16 @@ var onRequest = function(req, res) {
     
     console.log(getDateString(), requestNum, req.connection.remoteAddress, data.url);
     
+    if (data.timeout == undefined) data.timeout = 28;
     setTimeout(function() {
         p.removeAllListeners();
         err(res, 'hard timeout');
         console.log(getDateString(), requestNum, "d"+tookSecs, 'FAIL/HARD TIMEOUT');
         
         p.kill('SIGKILL');
-    }, data.timeout == undefined ? 30000 : data.timeout);
+    }, data.timeout * 1000);
     
+    data.timeout -= 1000; // user timeout is MAX. if response doesn't arrive from cmd in 1s, hard timeout
     var p = spawn('phantomjs', ['webcap.js', JSON.stringify(data)]);
     var spawnTime = new Date().getTime();
     
