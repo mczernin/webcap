@@ -29,7 +29,7 @@ If hosting the REST API on Heroku, the hosting architecture expects a reply to b
 
 ### Examples:
 
-See `browser-example.js` for a Javascript example runnable inside  a web browser.
+See [`browser-example.js`](https://bitbucket.org/gima/webcap/src/master/documentation/browser-example.js) for a Javascript example runnable inside  a web browser.
 
 Simulate HTTP Post using [cURL][curl] and display the resulting screenshot with [ImageMagick][imagemagick]:  
 (This example was adapted from Webcap command line documentation examples.)
