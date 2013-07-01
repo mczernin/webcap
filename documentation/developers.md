@@ -4,7 +4,7 @@ To start digging around the source code:
 
 1. Clone Webcap repository.
 2. `$ npm install` – installs dependencies
-3. `$ sudo npm install -g grunt-cli` – installs [Grunt][grunt] command line tool so it's available in `PATH`
+3. `$ sudo npm install -g grunt-cli` – installs [Grunt][grunt] command line tool so it's available as a command line tool.
 
 ### Webcap REST API, `webcap-service.js`
 For changes in the source code to take effect, the service has to be restarted.
