@@ -16,17 +16,17 @@ This repository contains two pieces of software and one "role":
 
 ## webcap.js
 
-> Up-To-Date [Documentation Here](https://bitbucket.org/gima/webcap/src/master/src/webcap.js).
+> Up-To-Date [Documentation Here](https://bitbucket.org/gima/webcap/src/master/documentation).
 
->     $ phantomjs webcap.js <json>
-> **json:** contains program arguments: url, viewport size and cookies among others.
+>     $ phantomjs webcap.js json
+> `json` contains program arguments: url, viewport size and cookies among others.
 
 ## webcap-service.js
 
-> Up-To-Date [Documentation Here](https://bitbucket.org/gima/webcap/src/master/src/webcap-service.js).
+> Up-To-Date [Documentation Here](https://bitbucket.org/gima/webcap/src/master/documentation).
 
 >     $ nodejs webcap-service.js
-> Reads settings from environment: port to listen and key for the API among others.
+> Reads settings from the environment: port to listen and key for the API among others.
 
 ## Heroku
 
