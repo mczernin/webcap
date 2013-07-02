@@ -15,7 +15,7 @@
 `"clipWidth"` (int, default:viewportWidth) — Width of resulting screenshot.  
 `"clipHeight"` (int, default:viewportHeight) — Height of resulting screenshot.  
 `"zoom"` (dec, default:1.0, range:0..1 ) — Viewport zoom factor.  
-`"timeout"` (int, default:27) — Maximum time in seconds this script is allowed to execute.  
+`"timeout"` (int, default:28) — Maximum time in seconds this script is allowed to execute.  
 `"cookies"` (arr, default:[]) — Cookies available to servers during the screenshot.
 
 >     cookie = {

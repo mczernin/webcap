@@ -15,7 +15,7 @@
 
 `"key"` (str) — The key specified when starting the server.
 
-If timeout is not specified, it is set to 28 seconds.
+If timeout is not specified, it is set to 28 seconds. Minimum is 2 seconds.
 
 ### HTTP Response Code:
 

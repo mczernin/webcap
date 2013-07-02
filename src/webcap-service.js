@@ -9,8 +9,9 @@ var port = process.env.PORT || 5000;
 var key = process.env.KEY;
 
 
-server.listen(port);
-console.log("Listening on " + port);
+server.listen(port, function() {
+    console.log("Listening on " + port);
+});
 
 
 // functions
@@ -51,6 +52,7 @@ var onRequest = function(req, res) {
     // no need for the key to be submitted to the webcap cmdline program
     delete data.key;
     
+    if (onRequest.requests == 1000000) onRequest.requests = 0;
     var requestNum = ++onRequest.requests;
     
     console.log(getDateString(), requestNum, req.connection.remoteAddress, data.url);
@@ -64,7 +66,8 @@ var onRequest = function(req, res) {
         p.kill('SIGKILL');
     }, data.timeout * 1000);
     
-    data.timeout -= 1000; // user timeout is MAX. if response doesn't arrive from cmd in 1s, hard timeout
+    data.timeout -= 2; // user timeout is MAX. if response doesn't arrive from cmd in 2s, hard timeout
+    
     var p = spawn('phantomjs', ['webcap.js', JSON.stringify(data)]);
     var spawnTime = new Date().getTime();
     
@@ -72,10 +75,12 @@ var onRequest = function(req, res) {
     var errbuf = '';
     
     p.stdout.on('data', function(data) {
+        // console.log("DEBUG:",data.toString());
         outbuf += data;
     });
     
     p.stderr.on('data', function(data) {
+        // console.log("DEBUG:",data.toString());
         errbuf += data;
     });
     
