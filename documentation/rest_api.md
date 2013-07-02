@@ -8,7 +8,7 @@
 
 ### Usage (Client Side):
 
-    HTTP POST http://example.com/webcap
+    HTTP POST http://example.com:1234/webcap
     Body: json
     
 `json` JSON-encoded parameters (key:value). Available parameters are the same as in the command line tool, except the REST API accepts one additional parameter:

@@ -34,10 +34,9 @@ You need a Heroku account and the [Heroku Toolbelt](https://toolbelt.heroku.com/
 
     $ heroku login
     $ heroku create --buildpack https://github.com/ddollar/heroku-buildpack-multi.git
-    $ heroku config:set PATH=/app/bin:/app/node_modules/.bin:/app/vendor/phantomjs/bin:/usr/local/bin:/usr/bin:/bin
     $ heroku config:set KEY=mysecretkey    // the key necessary to use the REST API (optional)
     $ git push heroku master
-    $ heroku scale web=1
+    $ heroku config:set PATH=/app/bin:/app/node_modules/.bin:/app/vendor/phantomjs/bin:/usr/local/bin:/usr/bin:/bin
 
 Now you can issue requests to your application's URL as per documentation. The URL can be seen by running `heroku info`.
 
