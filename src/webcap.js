@@ -17,9 +17,8 @@ phantom.onError = function(msg, trace) {
 }
 
 
-/*
- * -- separator
- */
+// -- separator
+
 
 var args = require('system').args;
 
@@ -28,46 +27,52 @@ if (args.length != 2) err("Usage: See documentation");
 
 // parse arguments
 try {
-    var args = JSON.parse(args[1]);
+    var j = JSON.parse(args[1]);
 } catch (e) {
     err("Error: Failed to parse JSON-formatted arguments");
 }
 
-// ensure mandatory arguments are present
-if (args["url"] == null) {
-    err("Error: url must be specified");
+// half-hearted attempt at validating request object format
+// cannot use objectValidator.js, because it's for nodejs :(
+// let's assume format is ok, because 1) it's used through webcap-service.js which already validated it
+// or 2) webcap.js is used by another program, in which case if phantomjs exits with other than ExitCode 0,
+// the host-program knows something went wrong and information about it is available in stdout/stderr
+
+if (!j.opts instanceof Object || !j.urls instanceof Array || !j.urls[0] instanceof Object || !j.urls[0].url instanceof String) {
+    err('Request JSON didn\' validate. Fix it to match documentation');
 }
 
 // default values for optional arguments
-if (args["viewportWidth"] === undefined) args["viewportWidth"] = 1024;
-if (args["viewportHeight"] === undefined) args["viewportHeight"] = 768;
-if (args["clipWidth"] === undefined) args["clipWidth"] = args["viewportWidth"];
-if (args["clipHeight"] === undefined) args["clipHeight"] = args["viewportHeight"];
-if (args["zoom"] === undefined) args["zoom"] = 1;
-if (args["timeout"] === undefined) args["timeout"] = 28;
-if (args["cookies"] === undefined) args["cookies"] = [];
-if (args["userAgent"] === undefined) args["userAgent"] = null;
-if (args["javascript"] === undefined) args["javascript"] = true;
-if (args["maxBytes"] === undefined) args["maxBytes"] = 1024*1024*5; // 5 MiB
-if (args["maxRedirects"] === undefined) args["maxRedirects"] = 40; // Semi-random maximum. Firefox had 20 (apparently for one resource), but we count total..
+if (j.opts.viewportWidth === undefined) j.opts.viewportWidth = 1024;
+if (j.opts.viewportHeight === undefined) j.opts.viewportHeight = 768;
+if (j.opts.clipWidth === undefined) j.opts.clipWidth = j.opts.viewportWidth;
+if (j.opts.clipHeight === undefined) j.opts.clipHeight = j.opts.viewportHeight;
+if (j.opts.zoom === undefined) j.opts.zoom = 1;
+if (j.opts.timeout === undefined) j.opts.timeout = 28;
+if (j.opts.cookies === undefined) j.opts.cookies = [];
+if (j.opts.userAgent === undefined) j.opts.userAgent = null;
+if (j.opts.javascript === undefined) j.opts.javascript = true;
+if (j.opts.maxBytes === undefined) j.opts.maxBytes = 1024*1024*5; // 5 MiB
+if (j.opts.maxRedirects === undefined) j.opts.maxRedirects = 40; // Semi-random maximum. Firefox had 20 (assuming not counting sub-requests), but we count total..
 
 
-/*
- * -- separator
- */
+// -- separator
+
 
 // abort if script execution exceeds x seconds
 setTimeout(function() {
     err("Error: timeout exceeded");
-}, args["timeout"] * 1000);
+}, j.opts.timeout * 1000);
 
-page.viewportSize = { width:args["viewportWidth"], height:args["viewportHeight"] };
-page.clipRect = { top:0, left:0, width:args["clipWidth"], height:args["clipHeight"] };
-page.zoomFactor = args["zoom"];
-if (args["userAgent"] != null) page.settings.userAgent = args["userAgent"];
-page.settings.javascriptEnabled = args["javascript"];
+page.viewportSize = { width:j.opts.viewportWidth, height:j.opts.viewportHeight };
+page.clipRect = { top:0, left:0, width:j.opts.clipWidth, height:j.opts.clipHeight };
+page.zoomFactor = j.opts.zoom;
+if (j.opts.userAgent != null) page.settings.userAgent = j.opts.userAgent;
+page.settings.javascriptEnabled = j.opts.javascript;
 
-args["cookies"].forEach(function(elem, idx, arr) {
+j.opts.cookies.forEach(function(elem, idx, arr) {
+    elem.httpOnly = elem.httponly;
+    delete elem.httponly;
     if (page.addCookie(elem) === false) {
         err("Error: Failed to add the following cookie:\n" + elem);
     }
@@ -76,11 +81,10 @@ args["cookies"].forEach(function(elem, idx, arr) {
 var sentCookies = phantom.cookies;
 
 
-/*
- * -- separator
- */
+// -- separator
 
-page.open(args["url"]);
+
+page.open(j.urls[0].url);
 
 var redirects = 0;
 var receivedBytes = 0;
@@ -102,14 +106,14 @@ page.onResourceReceived = function(response) {
         if (response.redirectURL) redirects++;
     }
     
-    if (receivedBytes > args["maxBytes"]) {
+    if (receivedBytes > j.opts.maxBytes) {
         // observing crash after phantom.exit(1)
-        err("Error: exceeded specified total allowed received bytes")
+        err("Error: Exceeded specified total allowed received bytes")
     }
     
-    if (redirects > args["maxRedirects"]) {
+    if (redirects > j.opts.maxRedirects) {
         // observing crash after phantom.exit(1)
-        err("Error: exceeded specified total allowed redirects")
+        err("Error: Exceeded specified total allowed redirects")
     }
     
     if (response.stage == 'end' && page.url == response.url) { // relying on observed behavior
@@ -132,25 +136,28 @@ page.onLoadFinished = function(status) {
                 var imageData = page.renderBase64("PNG");
                 
                 out(JSON.stringify({
-                    "arguments":{
-                        "url":args["url"],
-                        "viewport rect":page.viewportSize.width+ ", "+ page.viewportSize.height,
-                        "clip rect":page.clipRect.width+ ", "+ page.clipRect.height,
-                        "zoom factor":args["zoom"],
-                        "timeout":args["timeout"],
-                        "cookies":sentCookies,
-                        "user agent":page.settings.userAgent,
-                        "javascript enabled":page.settings.javascriptEnabled,
-                        "max bytes":args["maxBytes"],
-                        "max redirects":args["maxRedirects"]
+                    opts:{
+                        viewportWidth: page.viewportSize.width,
+                        viewportHeight: page.viewportSize.height,
+                        clipWidth: page.clipRect.width,
+                        clipHeight: page.clipRect.height,
+                        zoom: j.opts.zoom,
+                        timeout: j.opts.timeout,
+                        cookies: sentCookies,
+                        userAgent: page.settings.userAgent,
+                        javascript: page.settings.javascriptEnabled,
+                        maxBytes: j.opts.maxBytes,
+                        maxRedirects: j.opts.maxRedirects
                     },
-                    "bytesReceived":receivedBytes,
-                    "title":page.title,
-                    "headers":mainHeaders,
-                    "body":page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML })
-                                            // needs base64 encoding?
-                    "image":imageData,  // TODO:base64 necessary? js cannot handle binary data? / remember to update doc?
-                }, null, " "));
+                    url: j.urls[0].url,
+                    title: page.title,
+                    headers: mainHeaders,
+                    bytesReceived: receivedBytes,
+                    redirected: redirects,
+                    body: page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML })
+                                           // needs base64 encoding?
+                    image: imageData  // base64 necessary? js cannot handle binary data? / remember to update doc?
+                }, null, " ")); //TODO: space not necessary, but easier to read
                 
                 phantom.exit();
             }, 200);
@@ -158,33 +165,6 @@ page.onLoadFinished = function(status) {
         
         case 'fail': // TODO: DOES THIS FAIL IN CASE OF SUB-REQUEST FAILING? if so, must go around with onResourceReceived..?
         default:
-            err("Error: http request failed. last response: "+ JSON.stringify(lastResponse));
+            err("Error: HTTP request failed. Last response: "+ JSON.stringify(lastResponse));
     }
 }
-
-
-/* This is free and unencumbered software released into the public domain.
-
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
-
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
-
-For more information, please refer to <http://unlicense.org/>
-*/

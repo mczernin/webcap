@@ -9,6 +9,6 @@ r.onreadystatechange = function() {
 };
 
 r.open('POST', 'http://example.com:5000/webcap', true);
-r.send(JSON.stringify({url:'http://fox.com'}));
+r.send(JSON.stringify({urls:[{url:'http://fox.com'}]}));
 
 delete r;
