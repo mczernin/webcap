@@ -131,6 +131,7 @@ function asyncApi(reqPost, req, res) {
 // handler for http SYNCHRONOUS api
 function syncApi(reqPost, req, res) {
 
+    // queue work item
     var workItem = {};
     workItem.sync = true;
     workItem.req = req;
@@ -142,7 +143,7 @@ function syncApi(reqPost, req, res) {
     }
     workItem.num = ++numWorks;
     
-    // set synchronous work timeout
+    // set synchronous work's timeout, as it's already handled by work queue (yea, a bit bad)
     req.setTimeout(0);
     
     workQueue.push(workItem);
@@ -168,6 +169,7 @@ setInterval(function() {
     
     o.out(getDateString(), 'Work#'+workItem.num, '('+(activeWorkers+1)+'/'+MAXWORKERS+')', 'IP:'+workItem.req.connection.remoteAddress, 'URL:'+workItem.webcap.urls[0].url);
     
+    // start the webcap process
     var p = spawn('phantomjs', ['webcap.js', JSON.stringify(workItem.webcap)]);
     
     workItem.process = p;
