@@ -57,8 +57,9 @@ The REST API accepts the same JSON request format. That's the reason for the `ur
 Debug (spits everything at your face):  
 `$ phantomjs webcap.js '{"urls":[{"url":"http://fox.com"}]}'`
 
-Display screenshot using [ImageMagick][imagemagick]:  
-`$ phantomjs webcap.js '{"urls":[{"url":"http://fox.com"}]}'` | grep -oP '(?<= "image": ").*(?=")' | base64 -d | display png:-`
+Display screenshot using [ImageMagick][imagemagick]:
+
+    $ phantomjs webcap.js '{"urls":[{"url":"http://fox.com"}]}' | grep -oP '(?<= "image": ").*(?=")' | base64 -d | display png:-
 
 Using many parameters, screenshotted website displayed with ImageMagick:
 
