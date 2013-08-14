@@ -160,7 +160,8 @@ page.onLoadFinished = function(status) {
                 // add body to response only if it's text. otherwise risk sending full resolution image
                 for (var key in mainHeaders) {
                     if (key.toLowerCase() == 'content-type') {
-                        if (mainHeaders[key].match(/^(?:text\/html|application\/xhtml\+xml|application\/xml|text\/plain)$/i)) {
+                        // fast and loose matching. justification:this is not so mission critical
+                        if (mainHeaders[key].match(/(?:text\/html|application\/xhtml\+xml|application\/xml|text\/plain)/i)) {
                             resObj.body = page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML }) .. needs base64 encoding?
                         }
                     }
