@@ -1,15 +1,5 @@
 'use strict';
 
-// TODO: document that if APIKEY if not defined, then "key" must not be sent in JSON or it registers as incorrect key
-// TODO: fix timeout if there's something to fix
-// TODO: document that callback* things are only needed when async api is used.
-// TODO: document only first urls array item will be used (for reason of "one api design/contract") from sync api
-//       AND that callbackurl and callbackdata will be ignored when they are present while using sync api.
-// TODO: document timeoutS (and fix?, now webcap and webcap-service has different defaults
-// TODO: document return parameters style in sync and async case
-// TODO: workTimeout: necessary to remove internal.res(make available if yes) 'data' listeners as well?
-//       depends on how work queue handler does its job
-
 var http = require('http')
     , post = require('request').post
     , spawn = require('child_process').spawn
@@ -82,7 +72,7 @@ server.on('request', function(req, res) {
             
             // validate request json format
             if (!validateRequestSchema(reqPost)) {
-                reply(res, 'Request JSON didn\' validate. Fix it to match documentation');
+                reply(res, 'Request JSON didn\' validate. Check documentation');
                 return;
             }
             

@@ -39,7 +39,7 @@ try {
 // the host-program knows something went wrong and information about it is available in stdout/stderr
 
 if (!j.opts instanceof Object || !j.urls instanceof Array || !j.urls[0] instanceof Object || !j.urls[0].url instanceof String) {
-    err('Request JSON didn\' validate. Fix it to match documentation');
+    err('Request JSON didn\' validate. Check documentation');
 }
 
 // default values for optional arguments
@@ -48,7 +48,7 @@ if (j.opts.viewportHeight === undefined) j.opts.viewportHeight = 768;
 if (j.opts.clipWidth === undefined) j.opts.clipWidth = j.opts.viewportWidth;
 if (j.opts.clipHeight === undefined) j.opts.clipHeight = j.opts.viewportHeight;
 if (j.opts.zoom === undefined) j.opts.zoom = 1;
-if (j.opts.timeout === undefined) j.opts.timeout = 28;
+if (j.opts.timeout === undefined) j.opts.timeout = 30;
 if (j.opts.cookies === undefined) j.opts.cookies = [];
 if (j.opts.userAgent === undefined) j.opts.userAgent = null;
 if (j.opts.javascript === undefined) j.opts.javascript = true;
@@ -135,7 +135,7 @@ page.onLoadFinished = function(status) {
             window.setTimeout(function () {
                 var imageData = page.renderBase64("PNG");
                 
-                out(JSON.stringify({
+                var resObj = {
                     opts:{
                         viewportWidth: page.viewportSize.width,
                         viewportHeight: page.viewportSize.height,
@@ -154,10 +154,19 @@ page.onLoadFinished = function(status) {
                     headers: mainHeaders,
                     bytesReceived: receivedBytes,
                     redirected: redirects,
-                    body: page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML })
-                                           // needs base64 encoding?
                     image: imageData  // base64 necessary? js cannot handle binary data? / remember to update doc?
-                }, null, " ")); //TODO: space not necessary, but easier to read
+                };
+                
+                // add body to response only if it's text. otherwise risk sending full resolution image
+                for (var key in mainHeaders) {
+                    if (key.toLowerCase() == 'content-type') {
+                        if (mainHeaders[key].match(/^(?:text\/html|application\/xhtml\+xml|application\/xml|text\/plain)$/i)) {
+                            resObj.body = page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML }) .. needs base64 encoding?
+                        }
+                    }
+                }
+                
+                out(JSON.stringify(resObj, null, " ")); //TODO: space not necessary, but easier to read
                 
                 phantom.exit();
             }, 200);
