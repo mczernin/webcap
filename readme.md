@@ -1,6 +1,6 @@
 ## Description	
 
-Take screenshots of web pages. Provides a command line tool and a HTTP API supporting both synchronous and asynchronous requests. The project is ready to run on a free [Heroku] dyno.
+Take screenshots of web pages. Provides a command line tool and a HTTP API supporting both synchronous and asynchronous requests. The HTTP API is ready to run on a free [Heroku] dyno.
 
 The HTTP API is a HTTP server which runs on [NodeJS] and uses child processes to take the actual screenshots. Each child process is an instance of the command line tool, which runs on [PhantomJS].
 
