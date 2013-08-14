@@ -3,7 +3,6 @@
 var page = require('webpage').create();
 
 var err = function(msg) {
-    console.log(msg);
     phantom.exit(1);
 }
 
@@ -162,12 +161,12 @@ page.onLoadFinished = function(status) {
                     if (key.toLowerCase() == 'content-type') {
                         // fast and loose matching. justification:this is not so mission critical
                         if (mainHeaders[key].match(/(?:text\/html|application\/xhtml\+xml|application\/xml|text\/plain)/i)) {
-                            resObj.body = page.content,    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML }) .. needs base64 encoding?
+                            resObj.body = page.content;    // alt(difference?): page.evaluate(function() { return document.documentElement.outerHTML }) .. needs base64 encoding?
                         }
                     }
                 }
                 
-                out(JSON.stringify(resObj, null, " ")); //TODO: space not necessary, but easier to read
+                out(JSON.stringify(resObj)); //TODO: space not necessary, but easier to read
                 
                 phantom.exit();
             }, 200);

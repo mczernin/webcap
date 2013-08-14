@@ -180,12 +180,14 @@ setInterval(function() {
         ;
     
     p.stdout.on('data', function(chunk) {
-        // out("DEBUG:",data.toString());
+        chunk = chunk.toString();
+        // o.out("DEBUGO:",chunk);
         outbuf += chunk;
     });
     
     p.stderr.on('data', function(chunk) {
-        // out("DEBUG:",data.toString());
+        chunk = chunk.toString();
+        // o.out("DEBUGE:",chunk);
         errbuf += chunk;
     });
     
@@ -233,12 +235,12 @@ function workTimeout(workItem) {
     o.out(getDateString(), workItem.num, 'timeout');
     
     // kill process
-    process.removeAllListeners();
-    process.on('exit', function() {
+    workItem.process.removeAllListeners();
+    workItem.process.on('exit', function() {
         activeWorkers--;
         o.out(getDateString(), 'Work#'+workItem.num, '('+(activeWorkers)+'/'+MAXWORKERS+')', 'FAIL: Timeout');
     });
-    process.kill('SIGKILL');
+    workItem.process.kill('SIGKILL');
     
     // remove from work queue
     var idx = workQueue.indexOf(workItem);
