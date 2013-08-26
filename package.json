@@ -17,15 +17,23 @@
     "type": "git",
     "url": "https://github.com/gima/webcap.git"
   },
+  "scripts": {
+    "test": "node node_modules/.bin/mocha"
+  },
   "engines": {
-    "node": "0.10.5"
+    "node": "~0.10.5"
   },
   "dependencies": {
-    "request": "~2.26.0",
-    "amanda": "~0.4.7"
+    "request": "~2.27.0",
+    "winston": "~0.7.2",
+    "js-schema": "~0.6.2"
   },
+  "NOTE":"nodemon?",
   "devDependencies": {
-    "grunt": "0.4.1",
-    "grunt-nodemon": "0.0.5"
+    "q": "~0.9.6",
+    "chai": "~1.7.2"
+  },
+  "optionalDependencies": {
+    "cli-color": "~0.2.2"
   }
 }

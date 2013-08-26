@@ -35,10 +35,10 @@ Exit code:
 `0` – Screenshot successful. JSON written to stdout. See "[Returned Data](#5-returned-data)".  
 `?` – Any other exit code means an error occurred. Details written to stdout & stderr.
 
-*(!) From the creator of [NPM] comes an easy way to install [NodeJS] onto a server without root access: [nave]. Just update your PATH to include the installation directory.*
+*(!) Install [NodeJS] easily without root access with [Nave]*
 
   [NPM]: https://npmjs.org
-  [nave]: https://npmjs.org/package/nave
+  [Nave]: https://npmjs.org/package/nave
 
 
 ## 2. HTTP API Server
@@ -56,6 +56,7 @@ $ export APIKEY=secretkey
 $ export MAXWORKERS=5
 
 # Start the REST API server
+$ cd src
 $ nodejs webcap-server.js
 ```
 
@@ -200,7 +201,7 @@ Key | Type | Description
 `title` | `str` | Title of the screenshotted web page.
 `headers` | `object` | Headers received from the server ({key:value}*n).
 `bytesReceived` | `int` | Total bytes received (all requests & subrequest combined).
-`redirected` | `int` | Redirect count of main request.
+`redirects` | `int` | Redirect count of main request.
 `body` | `str` | Body text of the web page after browser engine has interpreted it. Note: Javascript might have done modifications to it as well. NOTE: The value will ONLY be set if response MIME type matches *"text/html", "application/xhtml+xml", "application/xml" or "text/plain"*.
 `image` | `str` | The actual screenshot in PNG format, encoded in Base64.
 

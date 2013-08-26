@@ -1,25 +1,48 @@
 'use strict';
 
+/*
+todo:
+to avoid preflight (OPTIONS method not supported):
+    -direct api users to POST json request using content-type text/plain (works properly with application/json BUT then browser preflights the request and: OPTIONS method is not supported
+    -set "Access-Control-Allow-Origin: *" when "Origin: x" header is present ... or just send it always?
+*/
+
 var http = require('http')
     , post = require('request').post
     , spawn = require('child_process').spawn
     , util = require('util')
     , o = require('./utils')
-    , validateRequestSchema = require('./objectValidator').validateRequestSchema;
+    , schemas = require('./validators')
+    , log = require('winston');
     ;
+
+// set up logging
+log.remove(log.transports.Console);
+log.add(log.transports.Console, {colorize:true, timestamp:true});
+var tmp = new (log.transports.Console)({colorize:true, timestamp:true});
+tmp.log = function(level, msg, meta, callback) {
+    msg = require('util').inspect(meta);
+    meta = undefined;
+    return log.transports.Console.prototype.log.call(this, level, msg, meta, callback);
+};
+tmp = undefined;
     
 // read "CONSTANTS" from environment or use defaults
 var PORT = process.env.PORT || 5000
-    , APIKEY = process.env.KEY
+    , APIKEY = process.env.APIKEY
     , MAXWORKERS = process.env.MAXWORKERS || 5
     ;
+    
+log.info('Maximum workers:', MAXWORKERS);
+if (APIKEY) log.info('HTTP API key set');
+else log.warn('No HTTP API key set');
 
 // set up HTTP server
 var server = http.createServer();
 
 server.timeout = 5000;
 server.listen(PORT, function() {
-    o.out("Listening on " + PORT);
+    log.info("HTTP Server listening on port:", PORT);
 });
 
 // set up work queue
@@ -33,6 +56,7 @@ server.on('request', function(req, res) {
 
     // if request not understood, send 404
     if (!(req.method == 'POST' && req.url.match(/^\/webcap\/?$/))) {
+        // log.info('['+req.method+']', req.url, req.connection.remoteAddress);
         reply(res, 'Not Found');
         return;
     }
@@ -42,11 +66,13 @@ server.on('request', function(req, res) {
     for (var key in req.headers) {
         if (key.toLowerCase() == 'content-length') bodylen = req.headers[key];
         if (key.toLowerCase() == 'content-encoding') {
+            // log.info(req.connection.remoteAddress, 'Content-Encoding present');
             reply(res, 'Content-Encoding is not supported');
             return;
         }
     }
     if (bodylen == 0) {
+        // log.info(req.connection.remoteAddress, 'Content-Length not present');
         reply(res, 'Content-Length must be supplied');
         return;
     }
@@ -65,19 +91,27 @@ server.on('request', function(req, res) {
             // parse POST data as JSON
             try {
                 var reqPost = JSON.parse(body)
+                if (!(reqPost instanceof Object)) throw new Error('JSON must be object');
             } catch (e) {
+                // log.info(req.connection.remoteAddress, 'Invalid JSON');
                 reply(res, 'Invalid JSON');
                 return;
             }
             
             // validate request json format
-            if (!validateRequestSchema(reqPost)) {
-                reply(res, 'Request JSON didn\' validate. Check documentation');
+            if (!schemas.validateRequest(reqPost)) {
+                // log.info(req.connection.remoteAddress, 'JSON didn\'t validate');
+                reply(res, 'Request JSON didn\'t validate. Check documentation');
                 return;
             }
             
+            // ensure the opts key is present, makes life easier for further code.
+            // also cannot force "required" with objectValidator if APIKEY is left undefined
+            if (!reqPost.opts) reqPost.opts = {};
+            
             // check APIKEY
             if (reqPost.opts.key !== APIKEY) {
+                log.info(req.connection.remoteAddress, 'Incorrect API key ('+reqPost.opts.key+')');
                 reply(res, 'Incorrect API key');
                 return;
             }
@@ -96,15 +130,18 @@ server.on('request', function(req, res) {
 // handler for http ASYNCHRONOUS api
 function asyncApi(reqPost, req, res) {
 
+    log.info(req.connection.remoteAddress, 'Async POST', reqPost.urls.length, 'URLs. Callback:'+reqPost.opts.callbackUrl);
+
     // queue work items
     reqPost.urls.forEach(function(loopEntry) {
         var workItem = {};
         workItem.sync = false;
         workItem.req = req;
+        workItem.ip = workItem.req.connection.remoteAddress;
         workItem.res = res;
         
         workItem.webcap = {
-            opts: reqPost.opts,
+            opts: copy(reqPost.opts),
             urls: [{
                 url: loopEntry.url,
                 callbackData: loopEntry.callbackData
@@ -121,10 +158,13 @@ function asyncApi(reqPost, req, res) {
 // handler for http SYNCHRONOUS api
 function syncApi(reqPost, req, res) {
 
+    log.info(req.connection.remoteAddress, 'Sync POST URL');
+
     // queue work item
     var workItem = {};
     workItem.sync = true;
     workItem.req = req;
+    workItem.ip = workItem.req.connection.remoteAddress;
     workItem.res = res;
     
     workItem.webcap = {
@@ -154,20 +194,19 @@ setInterval(function() {
     // there's work to be done
     var workItem = workQueue.shift();
     
-    // set default timeout value
-    workItem.webcap.opts.timeout = workItem.webcap.opts.timeout != null ? workItem.webcap.opts.timeout*1000 : 30000;
-    
-    o.out(getDateString(), 'Work#'+workItem.num, '('+(activeWorkers+1)+'/'+MAXWORKERS+')', 'IP:'+workItem.req.connection.remoteAddress, 'URL:'+workItem.webcap.urls[0].url);
+    logWorkMsg('info', workItem, 'IP:'+workItem.ip, 'URL:'+workItem.webcap.urls[0].url);
     
     // start the webcap process
     var p = spawn('phantomjs', ['webcap.js', JSON.stringify(workItem.webcap)]);
-    
     workItem.process = p;
     activeWorkers++;
-    
+    logWorkers(1);
+
     // set timeout handler for work item
     // webcap process can take some time to convey it's result to this process. give it 3 seconds
+    // set default timeout value
     workItem.req.setTimeout(0);
+    workItem.webcap.opts.timeout = workItem.webcap.opts.timeout != null ? workItem.webcap.opts.timeout*1000 : 30000;
     workItem.timeoutId = setTimeout(
         workTimeout,
         workItem.webcap.opts.timeout + 3000,
@@ -203,7 +242,7 @@ setInterval(function() {
         
         if (code == 0) {
             // webcap process exited successfully
-            o.out(getDateString(), 'Work#'+workItem.num, '('+(activeWorkers-1)+'/'+MAXWORKERS+')', tookSecs+'sec', 'OK');
+            logWorkMsg('info', workItem, 'Took:'+tookSecs+'secs', 'OK');
             
             // send response
             if (workItem.sync) {
@@ -214,7 +253,7 @@ setInterval(function() {
         } else {
             // webcap exited with error
             var bufMsgs = ('StdOut:'+ outbuf+ ', StdErr:'+ errbuf).replace(/[\r\n\t]+/g, ' ');
-            o.out(getDateString(), 'Work#'+workItem.num, '('+(activeWorkers-1)+'/'+MAXWORKERS+')', tookSecs+"sec", 'FAIL: LastError:'+ lastError+ ', '+ bufMsgs);
+            logWorkMsg('error', workItem, 'Took:'+tookSecs+'secs', 'FAIL: LastError:'+lastError, bufMsgs);
             
             // send response
             if (workItem.sync) {
@@ -224,21 +263,23 @@ setInterval(function() {
             }
         }
         
-        clearTimeout(workItem.timeoutId);
         activeWorkers--;
+        logWorkers(0);
+        clearTimeout(workItem.timeoutId);
     });
     
 }, 1000);
 
 // timeout handler
 function workTimeout(workItem) {
-    o.out(getDateString(), workItem.num, 'timeout');
+    logWorkMsg('error', workItem, 'FAIL: Hard timeout');
     
     // kill process
     workItem.process.removeAllListeners();
     workItem.process.on('exit', function() {
         activeWorkers--;
-        o.out(getDateString(), 'Work#'+workItem.num, '('+(activeWorkers)+'/'+MAXWORKERS+')', 'FAIL: Timeout');
+        logWorkMsg('info', workItem, 'Worker killed');
+        logWorkers(0);
     });
     workItem.process.kill('SIGKILL');
     
@@ -275,7 +316,7 @@ function reply(res, err, data) {
     
     res.writeHead(httpCode, {
         'Content-Type': 'application/json; charset=utf-8',
-        'Content-Length': new Buffer(data, 'utf8').length
+        'Content-Length': Buffer.byteLength(data)
     });
     res.end(data, 'utf8');
 }
@@ -310,9 +351,9 @@ function callbackReply(workItem, err, data) {
         function (err, res, body) {
             if (err || res.statusCode != 200) {
                 if (res) var sc = res.statusCode
-                o.out(getDateString(), 'Work#'+workItem.num, 'CALLBACK:FAIL: Error:'+err, 'HttpStatus:'+sc);
+                logWorkMsg('error', workItem, 'CALLBACK FAIL: Error:'+err, 'HttpStatus:'+sc);
             } else {
-                o.out(getDateString(), 'Work#'+workItem.num, 'CALLBACK:OK');
+                logWorkMsg('info', workItem, 'CALLBACK OK');
             }
         }
     );
@@ -321,6 +362,18 @@ function callbackReply(workItem, err, data) {
 
 // -- helper functions below
 
+function logWorkMsg(level, workItem, msg) {
+    var args = [level, 'Work:#'+workItem.num].concat(Array.prototype.slice.call(arguments, 2));
+    log.log.apply(this, args);
+}
+
+function logWorkers(b) {
+    if (b) var msg = 'New worker';
+    else var msg = 'Worker exited';
+    log.info(msg, '(Workers:'+activeWorkers+'/'+MAXWORKERS+')');
+}
+
+/*
 function getDateString()  {
     var date = new Date();
     return util.format('%s-%s-%sT%s:%s:%sZ',
@@ -332,10 +385,12 @@ function getDateString()  {
         pad(date.getUTCSeconds()+1, 2, '0')
         );
 }
+*/
 
 /*
 see http://stackoverflow.com/questions/10073699/pad-a-number-with-leading-zeros-in-javascript/10073761#10073761
 */
+/*
 function pad(str, len, repchr) {
     if (str.length > len) return str;
     
@@ -344,8 +399,8 @@ function pad(str, len, repchr) {
     
     return (pad+str).slice(-len);
 }
+*/
 
-/*
 function copy(fromObject) {
     var newObject = {};
     for (var attribName in fromObject) {
@@ -353,4 +408,3 @@ function copy(fromObject) {
     }
     return newObject;
 }
-*/

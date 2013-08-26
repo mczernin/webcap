@@ -26,7 +26,7 @@ module.exports = {
     },
 
     inspect: function(obj) {
-        return this.toType(obj)+ " = "+ require('util').inspect.apply(this, [ obj, {'showHidden':true,'colors':true} ]);
+        return this.toType(obj)+ " = "+ require('util').inspect.apply(this, [ obj, {'showHidden':true,'colors':true}, ' ' ]);
     },
     
     fixError: function(err, name) {

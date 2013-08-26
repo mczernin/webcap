@@ -2,12 +2,13 @@
 
 var page = require('webpage').create();
 
-var err = function(msg) {
-    phantom.exit(1);
-}
-
 var out = function(msg) {
     console.log(msg);
+}
+
+var err = function(msg) {
+    out(msg);
+    phantom.exit(1);
 }
 
 phantom.onError = function(msg, trace) {
@@ -142,7 +143,6 @@ page.onLoadFinished = function(status) {
                         clipHeight: page.clipRect.height,
                         zoom: j.opts.zoom,
                         timeout: j.opts.timeout,
-                        cookies: sentCookies,
                         userAgent: page.settings.userAgent,
                         javascript: page.settings.javascriptEnabled,
                         maxBytes: j.opts.maxBytes,
@@ -152,7 +152,7 @@ page.onLoadFinished = function(status) {
                     title: page.title,
                     headers: mainHeaders,
                     bytesReceived: receivedBytes,
-                    redirected: redirects,
+                    redirects: redirects,
                     image: imageData  // base64 necessary? js cannot handle binary data? / remember to update doc?
                 };
                 

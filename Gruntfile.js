@@ -1,5 +1,6 @@
+'use strict';
+
 module.exports = function(grunt) {
-    
     grunt.initConfig({
         
         nodemon: {
@@ -15,6 +16,5 @@ module.exports = function(grunt) {
     });
     
     grunt.loadNpmTasks('grunt-nodemon');
-    
     grunt.registerTask('default', ['nodemon']);
 }

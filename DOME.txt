@@ -1,0 +1,40 @@
+- needle sucks, use request,
+[x] switch from amanda to js-schema
+    : json schema is huge incomplete specification. json schema is bull
+    : js-schema is elegant, easy, and documented
+- union for http server pipeline? or connect? devonly? back to restify
+- istanbul away, probably,
+    - test-cov script away
+- replace mocha? anything else than some kid's rtfs project,
+    - for tape?
+        - if tape, then this go away(no tap output): expect instead of chai? or is chai better documented?,
+    : remember to check vows
+    - remove mocha.opts
+    : tried tap, tape, vows. mocha seems the best ;_;
+- set test to be run with grunt
+- document to developer how not to run "nodemon" and "tests"
+- remove unnecessary dependencies
+- test project from clone to npm install to tests, heroku too (test for heroku? ehh..)
+- cors
+    - tests to check content-type: application/json? force it to be sent as well if not already?
+- enable ability to use as a library as well
+- global bin/
+- NODEMON ?
+- if no need: remove grunt, use nodemon by itself until it's needed
+    : less deps the better
+- check that node_modules/bin/X is valid to put here and there..that it stays
+    : at least (taken from npm-folders): "When in local mode, executables are linked into ./node_modules/.bin "
+- better error messages everywhere? especially webcap
+s
+
+--  MOCHA
+-is fucking weird. hides exceptions = AN-NOY-ING
++nice output
+--  OTHER TESTING FRAMEWORKS
+dont remember. went through tap, tape, vows
+
+-- VOW
++no deps
++simple
++-good doc, but some things are left out BUT save comes from the fact that they are clearly inferred from the guiding text
+- returning a deferred promise from .then exits the parent promise chain: doesn't take into account the fact that promise never resolved/rejected. TODO:ask/bugreport?

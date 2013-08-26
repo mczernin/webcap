@@ -1,0 +1,363 @@
+
+/*
+process.on('uncaughtException', function(err) {
+    console.log('Caught exception:', err, err.stack);
+    httpApiServer.stop();
+    dummyServer.srv.close();
+});
+*/
+
+/*
+// no-where is it said that batches run sequentially. hope they do. if not: make one batch exec other batches via sub-contexts (start, tests, stop) OR just run batches by hand, would make starting servers cleaner(but not testable) as well. dont spawn server?
+
+exports.suite1 = vows.describe('Prepare for tests').addBatch({
+    // start servers necessary for the tests to run
+    // todo: maybe real checking here, ey? if process dies, tests must also die
+    'Start servers': {
+        topic: function() {
+            var self = this;
+            var e = new events.EventEmitter();
+            
+            httpApiServer.start({ PORT: 5000, APIKEY: 'laalaa' });
+            dummyServer = startDummyServer(1234);
+            
+            // stupidly assume server successfully started
+            setTimeout(function() {
+                e.emit('success');
+            }, 500);
+            return e;
+        },
+        'Started': function() { a.equal(); }
+    }
+});
+
+exports.suite2 = vows.describe('Test HTTP API').addBatch({
+    // 'POST nothing': {
+        // topic: function() {
+            // post(httpApiServer.url, {a:2}, this);
+        // },
+        // 'isOk?': function(resp, body) {
+        // assert.isNull(42,43);
+        // }
+    // }
+    
+    'POST nothing': vowsPost(httpApiServer.url, {a:2}, function(resp, body) {
+        a.isObject(body)
+    })
+    
+    // 'POST nothing': {
+        // topic: function() {
+            // post(httpApiServer.url, {
+                // a:2
+            // }, this);
+        // },
+        // 'blabla': function(resp, body) {
+            // console.log('asdasdadsafsdgghrld,ry');
+            // // assert.isTrue(false);
+            // assert.isNull(42);
+        // }
+    // },
+
+    // TEST BY SENDING STRING (NOT) JSON-DECODED STRING
+});
+
+// exports.suite3 = vows.describe('Test HTTP API').addBatch({
+    // 'Stop servers': {
+        // topic: function() {
+            // httpApiServer.stop();
+            // dummyServer.srv.close();
+            // return null;
+        // },
+        // 'Cleanup': function(resp, body) {
+            // assert.equal();
+        // }
+    // },
+// });
+
+
+
+
+function vowsPost(url, data, cb) {
+    return {
+        topic: function() {
+            post(url, data, this);
+        },
+        'ok?': cb
+    }
+}
+*/
+
+//process.exit();
+
+/*
+    POST: undefined
+    POST: {}
+    POST: url, wrong key
+    POST: url, correct key
+    POST: url, no opts
+    POST: opts
+    POST: empty urls, opts
+    POST: empty urls
+    POST: valid request, some opts
+*/
+
+
+
+/*
+serving dummy content for testing the webcap api and for ensuring the callbacks are working
+*/
+
+
+/*
+vows.describe('Division by Zero').addBatch({
+    // 'when dividing a number by zero': {
+        // topic: function () { return 42 / 0 },
+
+        // 'we get Infinity': function (topic) {
+            // assert.equal (topic, Infinity);
+        // }
+    // },
+    // 'but when dividing zero by zero': {
+        // topic: function () { return 0 / 0 },
+
+        // 'we get a value which': {
+            // 'is not a number': function (topic) {
+                // assert.isNaN (topic);
+            // },
+            // 'is not equal to itself': function (topic) {
+                // assert.notEqual (topic, topic);
+            // }
+        // }
+    // },
+    'ctx1': {
+        topic: function() {
+            this.callback(0, 'ONE');
+        },
+        'test1': function() {
+            assert.equal(true,true);
+        },
+        'ctx2': {
+            topic: function() { return later('TWO'); },
+            'test2': function() {
+                assert.equal(true,true);
+            },
+            'ctx3': {
+                topic: function() { console.log(arguments); return later('THREE'); },
+                'test3': function() {
+                    assert.equal(true,true);
+                }
+            }
+        },
+        'test4': function() {
+            assert.equal(true,true);
+        }
+    }
+}).export(module);
+
+function later(data) {
+    var p = new (require('events').EventEmitter);
+    process.nextTick(function() {
+        p.emit('success', data);
+    });
+    return p;
+}
+*/
+
+/*
+var request = require('request');
+
+request.post({
+    uri:'http://localhost:1234',
+    json:true,
+    body:{a:2}
+}, function(err, resp, body) {
+    if (!err && resp)
+});
+*/
+
+/*
+var expect = require('chai').expect
+    , http = require('http')
+    , dummy = require('../src/dummy-test-server.js')    // "dummy" server for screenshot testing and callback requests
+    , util = require('util')
+    , needle = require('needle')
+    , httpApiServer = createHttpApiServer()
+    ;
+
+httpApiServer.start({PORT:5000,APIKEY:'laalaa'});
+
+
+// document how to use test cases (in developers.md?)
+
+// test sync request with body:
+// - nothing
+// - empty [object]
+// - no opts
+// - just opts
+// - empty urls + opts
+// - empty urls
+
+// test async request with body:
+// - one url
+// - multiple urls
+
+// special:
+// - no key, incorrect key, correct key
+// - test timeout
+
+
+before(function(done) {
+    // wait for server to start (lazy way)
+    setTimeout(function() {
+        done();
+    }, 250);
+});
+
+describe('SYNC API', function() {
+    
+    // workers pick work off queue every 1 second, so that's the minimum
+    this.timeout(5000);
+
+    
+    // - test sync request with body:
+    
+    testSync('POST: undefined', undefined, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    testSync('POST: {}', {}, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    testSync('POST: url, wrong key', {
+        opts:{
+            key: 'asd'
+        },
+        urls:[
+            {url: dummy.pageurl}
+        ]
+    }, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    testSync('POST: url, correct key', {
+        opts:{
+            key: 'laalaa'
+        },
+        urls:[
+            {url: dummy.pageurl}
+        ]
+    }, function(err, resp, body) {
+        expect(body).a('object').property('status', 'success');
+    });
+    
+    
+    testSync('POST: url, no opts', {
+        urls:[
+            {url: dummy.pageurl}
+        ]
+    }, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    // expect(body).a('object');
+    // expect(body).property('status', 'success');
+    // expect(body).property('data').a('object');
+    
+    
+    
+    testSync('POST: opts', {
+        opts:{
+            key: 'laalaa'
+        }
+    }, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    testSync('POST: empty urls, opts', {
+        opts:{
+            key: 'laalaa'
+        },
+        urls:[]
+    }, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    testSync('POST: empty urls', {
+        urls:[]
+    }, function(err, resp, body) {
+        expect(body).a('object').property('status', 'error');
+    });
+    
+    
+    testSync('POST: valid request, some opts', {
+        opts:{
+            key: 'laalaa',
+            clipWidth: 64,
+            clipHeight: 48,
+            zoom: 0.063,
+            timeout: 2
+        },
+        urls:[
+            {url: dummy.pageurl}
+        ]
+    }, function(err, resp, body) {
+        var validateResponseSchema = require('../src/objectValidator').validateResponseSchema
+            , toType = require('../src/utils').toType
+            ;
+        expect(body).a('object').property('status', 'success');
+        expect(body).property('data');
+        expect(body.data).a('string')
+        var j;
+        expect(function(){ j = JSON.parse(body.data) }).not.throw();
+        expect(j).a('object');
+        console.log(j);
+        console.log(toType(j.title));
+        console.log(validateResponseSchema(j));
+        // .satisfy(function(j) {
+            // // console.log('ZZZZZ');
+            // // console.log(j);
+            // console.log(toType(j));
+            // // console.log('XXXXX');
+            // // return true;
+            // return validateResponseSchema(j);
+        // });
+        // expect(j).a('object').satisfy(function(j) { return validateRequestSchema(j); })
+        // expect(validateRequestSchema(body.data)).true;
+    });
+    
+    
+    // it('first', function(done) {
+        // http.get('http://nullfox:631', function(res) {
+            // expect(res.statusCode).to.equal(200);
+            // done();
+        // })
+    // });
+    
+    // it('first', function(done) {
+        // http.get('http://nullfox:631', function(res) {
+            // expect(res.statusCode).to.equal(200);
+            // done();
+        // })
+    // });
+    
+})
+
+function testSync(desc, postData, testFunc) {
+    it(desc, function(done) {
+        // NOT TODO! ditched needle for request: todo: submit fix to "needle" for options.json not documented or automatically JSON.strifigy if typeof is object (though latter is dangerous: explain in bugthingie)
+        needle.post('http://localhost:5000/webcap', postData, { json:true }, function(err, resp, body) {
+            testFunc(err, resp, body);
+            done();
+        });
+    });
+}
+
+
+*/
