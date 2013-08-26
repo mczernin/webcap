@@ -1,3 +1,5 @@
+## INCOMPLETE, BROKEN
+
 ## Description    
 
 Take screenshots of web pages. Provides a command line tool and a HTTP API supporting both synchronous and asynchronous requests. The HTTP API is ready to run on a free [Heroku] dyno.
